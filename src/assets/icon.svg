@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a1d6e"/>
+      <stop offset=".55" stop-color="#141a3a"/>
+      <stop offset="1" stop-color="#0a1222"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset=".5" stop-color="#7c5cff" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c5cff"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d9def0"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".62" cy=".42" r=".55">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity=".35"/>
+      <stop offset=".6" stop-color="#7c5cff" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#7c5cff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <filter id="drop" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#04060d" flood-opacity=".6"/>
+    </filter>
+    <clipPath id="clip"><rect x="64" y="64" width="896" height="896" rx="216"/></clipPath>
+  </defs>
+
+  <!-- tile -->
+  <rect x="64" y="64" width="896" height="896" rx="216" fill="url(#tile)"/>
+  <g clip-path="url(#clip)">
+    <rect x="64" y="64" width="896" height="896" fill="url(#glow)"/>
+    <!-- faint scanlines for a screen feel -->
+    <g stroke="#ffffff" stroke-opacity=".035" stroke-width="6">
+      <path d="M64 200H960M64 280H960M64 360H960M64 440H960M64 520H960M64 600H960M64 680H960M64 760H960M64 840H960"/>
+    </g>
+    <path d="M64 64H960V420C700 360 330 360 64 470Z" fill="url(#sheen)"/>
+  </g>
+  <rect x="72" y="72" width="880" height="880" rx="208" fill="none" stroke="url(#rim)" stroke-width="16" stroke-opacity=".9"/>
+
+  <!-- glow behind the accent half -->
+  <path d="M500 486L676 310M500 486L676 662" stroke="#22d3ee" stroke-width="110" stroke-linecap="round" opacity=".45" filter="url(#soft)" fill="none"/>
+
+  <g filter="url(#drop)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- accent half of the X -->
+    <path d="M500 486L676 310M500 486L676 662" stroke="url(#accent)" stroke-width="96"/>
+    <!-- prompt chevron: the left half of the X -->
+    <path d="M324 310L500 486L324 662" stroke="url(#ink)" stroke-width="96"/>
+  </g>
+
+  <!-- cursor -->
+  <rect x="566" y="742" width="196" height="64" rx="22" fill="url(#accent)" filter="url(#drop)"/>
+  <rect x="566" y="742" width="196" height="26" rx="13" fill="#fff" opacity=".22"/>
+</svg>
