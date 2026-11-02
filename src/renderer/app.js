@@ -578,6 +578,8 @@ async function connectSsh(tab) {
       rows: tab.term.rows,
     });
     if (!state.tabs.includes(tab)) { api.kill(r.id); return; }
+    if (tab.rememberPw && tab.session) await api.sessions.save({ id: tab.session.id, password: tab.password, savePassword: true });
+    tab.rememberPw = false;
     overlay(tab, null);
     bindTerm(tab, r.id);
     setStatus(tab, 'connected');
@@ -589,6 +591,11 @@ async function connectSsh(tab) {
   } catch (e) {
     if (!state.tabs.includes(tab)) return;
     const msg = cleanErr(e);
+    // The server turned down every sign-in method we had (typical for imported sessions with no
+    // saved password): ask for the password instead of showing an error.
+    if (/authentication methods failed/i.test(msg) && s.auth !== 'key' && s.auth !== 'agent') {
+      if (await askPassword(tab, s, !!tab.password)) return connectSsh(tab);
+    }
     setStatus(tab, 'closed');
     const o = overlay(tab, `<div class="err-icon">${icon('x')}</div><h3>Connection failed</h3><p>${esc(msg)}</p>
       <div class="actions"><button class="btn sm" data-close>Close tab</button>
@@ -597,11 +604,22 @@ async function connectSsh(tab) {
     o.querySelector('[data-close]').onclick = () => closeTab(tab);
     o.querySelector('[data-retry]').onclick = () => connectSsh(tab);
     const pw = o.querySelector('[data-pw]');
-    if (pw) pw.onclick = async () => {
-      const r = await promptDialog({ title: 'Password', sub: sessionLabel(s), fields: [{ name: 'password', label: 'Password', type: 'password' }], ok: 'Connect' });
-      if (r) { tab.password = r.password; connectSsh(tab); }
-    };
+    if (pw) pw.onclick = async () => { if (await askPassword(tab, s)) connectSsh(tab); };
   }
+}
+
+async function askPassword(tab, s, retry) {
+  const r = await promptDialog({
+    title: retry ? 'Wrong password' : 'Password',
+    sub: retry ? `The server rejected it. Try again for ${sessionLabel(s)}.` : sessionLabel(s),
+    fields: [{ name: 'password', label: 'Password', type: 'password' }],
+    check: tab.session ? { label: 'Remember password (encrypted with your Windows account)', value: true } : null,
+    ok: 'Connect',
+  });
+  if (!r) return false;
+  tab.password = r.password;
+  tab.rememberPw = !!r.check;
+  return true;
 }
 
 function parseQuick(str) {

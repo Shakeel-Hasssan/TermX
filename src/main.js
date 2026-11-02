@@ -185,9 +185,15 @@ function defaultKeys() {
     .map((k) => path.join(os.homedir(), '.ssh', k))
     .filter((p) => fs.existsSync(p));
 }
+// The agent to use, or null when none is running. Pointing ssh2 at a missing agent fails the
+// whole connection, so "auto" sign-in has to skip it rather than try it.
 function agentPath() {
-  if (process.platform === 'win32') return '\\\\.\\pipe\\openssh-ssh-agent';
-  return process.env.SSH_AUTH_SOCK;
+  if (process.platform === 'win32') {
+    // fs.existsSync can't see named pipes; listing the pipe namespace can.
+    try { return fs.readdirSync('\\\\.\\pipe\\').includes('openssh-ssh-agent') ? '\\\\.\\pipe\\openssh-ssh-agent' : null; } catch { return null; }
+  }
+  const sock = process.env.SSH_AUTH_SOCK;
+  return sock && fs.existsSync(sock) ? sock : null;
 }
 
 ipcMain.handle('term:ssh', (_e, { sessionId, config, password, passphrase, cols, rows }) => {
@@ -220,10 +226,16 @@ ipcMain.handle('term:ssh', (_e, { sessionId, config, password, passphrase, cols,
     opts.passphrase = keyPass;
   } else if (s.auth === 'agent') {
     opts.agent = agentPath();
+    if (!opts.agent) {
+      throw new Error(process.platform === 'win32'
+        ? 'The SSH agent isn\'t running. Start the "OpenSSH Authentication Agent" service, or use a password or key.'
+        : 'No SSH agent found (SSH_AUTH_SOCK is not set).');
+    }
   } else if (s.auth === 'auto') {
     const k = defaultKeys()[0];
     if (k) { opts.privateKey = fs.readFileSync(k); opts.passphrase = keyPass; }
-    opts.agent = agentPath();
+    const agent = agentPath();
+    if (agent) opts.agent = agent;
   }
 
   terms.set(id, handle);
