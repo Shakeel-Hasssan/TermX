@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in TermX doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead? Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a new SSH session to ...
+        2. Click ...
+        3. See ...
+  - type: input
+    id: version
+    attributes:
+      label: TermX version
+      description: Shown in Settings → About.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows 11, Windows 10, macOS (Apple silicon), macOS (Intel), Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Shell or server type (e.g. PowerShell, Ubuntu 24.04 over SSH), error messages, logs. Please remove passwords and private hostnames.

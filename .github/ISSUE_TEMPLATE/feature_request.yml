@@ -1,0 +1,21 @@
+name: Feature request
+description: Suggest an idea or improvement for TermX
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task or problem, not just the solution. "When I tail logs on 5 servers, I want to..."
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could TermX help?
+      description: Your idea for how it could work. Mockups and examples from other tools are welcome.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Terminals and panes, SSH and sessions, SFTP, Grep and search, Flows, UI and settings, Other]

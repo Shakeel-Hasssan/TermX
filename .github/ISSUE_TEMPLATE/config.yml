@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Download TermX
+    url: https://github.com/Shakeel-Hasssan/TermX/releases/latest
+    about: Installers for Windows, macOS and Linux.

@@ -1,0 +1,51 @@
+# Builds TermX for Windows, macOS and Linux and attaches the installers to a GitHub Release.
+# Start it by pushing a version tag that matches package.json, e.g.:
+#   git tag v0.1.0 && git push origin v0.1.0
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  # One job creates the release first, so the three builds below upload into it
+  # instead of racing to create it.
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+          gh release create "$GITHUB_REF_NAME" --title "TermX $GITHUB_REF_NAME" --verify-tag --notes-file .github/release-notes.md
+
+  build:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The macOS runner is Apple silicon, so npm only installs the arm64 terminal backend.
+      # Add the Intel one so the x64 build can open shells too.
+      - name: Add the Intel Mac terminal backend
+        if: runner.os == 'macOS'
+        run: npm install --no-save --force @lydell/node-pty-darwin-x64@1.2.0-beta.18
+      - name: Build and upload
+        run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No signing certificates yet; see the README for the first-launch steps this needs.
+          CSC_IDENTITY_AUTO_DISCOVERY: false

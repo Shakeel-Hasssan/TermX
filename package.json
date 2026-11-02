@@ -2,14 +2,39 @@
   "name": "termx",
   "productName": "TermX",
   "version": "0.1.0",
-  "description": "A modern terminal, SSH and SFTP workspace — MobaXterm-style, with a fresh UI.",
+  "description": "A modern terminal, SSH and SFTP workspace for Windows, macOS and Linux.",
   "main": "src/main.js",
-  "scripts": {
-    "start": "electron .",
-    "dev": "electron . --enable-logging"
+  "author": {
+    "name": "Shakeel Hassan",
+    "email": "shakeelhassan7513@gmail.com"
   },
+  "homepage": "https://github.com/Shakeel-Hasssan/TermX",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Shakeel-Hasssan/TermX.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Shakeel-Hasssan/TermX/issues"
+  },
+  "keywords": [
+    "terminal",
+    "ssh",
+    "sftp",
+    "mobaxterm",
+    "electron",
+    "xterm",
+    "grep"
+  ],
   "license": "MIT",
   "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
   "dependencies": {
     "@lydell/node-pty": "^1.2.0-beta.18",
     "@xterm/addon-fit": "^0.11.0",
@@ -17,7 +42,99 @@
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^6.0.0",
-    "electron": "^45.2.1",
     "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.termx.app",
+    "productName": "TermX",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/@lydell/node-pty*/**"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Shakeel-Hasssan",
+        "repo": "TermX",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "icon": "src/assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "TermX"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-win-portable.${ext}"
+    },
+    "mac": {
+      "icon": "src/assets/icon-1024.png",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "src/assets/icon-1024.png",
+      "category": "Development",
+      "maintainer": "Shakeel Hassan <shakeelhassan7513@gmail.com>",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
   }
 }

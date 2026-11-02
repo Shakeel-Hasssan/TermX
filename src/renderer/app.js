@@ -608,12 +608,15 @@ async function connectSsh(tab) {
   }
 }
 
+// Where saved passwords are encrypted, in the words each OS uses.
+const secretStore = () => ({ win32: 'your Windows account', darwin: 'your macOS Keychain' })[state.info.platform] || 'your system keyring';
+
 async function askPassword(tab, s, retry) {
   const r = await promptDialog({
     title: retry ? 'Wrong password' : 'Password',
     sub: retry ? `The server rejected it. Try again for ${sessionLabel(s)}.` : sessionLabel(s),
     fields: [{ name: 'password', label: 'Password', type: 'password' }],
-    check: tab.session ? { label: 'Remember password (encrypted with your Windows account)', value: true } : null,
+    check: tab.session ? { label: `Remember password (encrypted with ${secretStore()})`, value: true } : null,
     ok: 'Connect',
   });
   if (!r) return false;
@@ -1577,7 +1580,7 @@ function editSession(existing, preset = {}) {
   let auth = s.auth === 'auto' ? 'password' : s.auth;
   let color = s.color || COLORS[0];
   const node = el(`<form class="modal" autocomplete="off">
-    <div class="modal-head"><div><h3>${existing ? 'Edit session' : 'New SSH session'}</h3><div class="sub">Saved locally. Passwords are encrypted with your Windows account.</div></div></div>
+    <div class="modal-head"><div><h3>${existing ? 'Edit session' : 'New SSH session'}</h3><div class="sub">Saved locally. Passwords are encrypted with ${secretStore()}.</div></div></div>
     <div class="modal-body">
       <div class="grid2"><div class="field"><label>Host</label><input class="input" name="host" required placeholder="example.com or 10.0.0.5" value="${esc(s.host)}" autofocus spellcheck="false"></div>
         <div class="field"><label>Port</label><input class="input" name="port" type="number" min="1" max="65535" value="${esc(s.port || 22)}"></div></div>
