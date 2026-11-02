@@ -1,6 +1,6 @@
 # Builds TermX for Windows, macOS and Linux and attaches the installers to a GitHub Release.
 # Start it by pushing a version tag that matches package.json, e.g.:
-#   git tag v0.1.0 && git push origin v0.1.0
+#   git tag v0.1.1 && git push origin v0.1.1
 name: Release
 
 on:
@@ -11,25 +11,37 @@ permissions:
   contents: write
 
 jobs:
-  # One job creates the release first, so the three builds below upload into it
+  # One job prepares the release first, so the three builds below upload into it
   # instead of racing to create it.
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Create the release
+      - name: Create the release, or empty it when a tag is rebuilt
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
-          gh release create "$GITHUB_REF_NAME" --title "TermX $GITHUB_REF_NAME" --verify-tag --notes-file .github/release-notes.md
+          sed "s/{{TAG}}/$TAG/g" .github/release-notes.md > notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release view "$TAG" --json assets -q '.assets[].name' | while read -r a; do gh release delete-asset "$TAG" "$a" -y; done
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" --title "TermX $TAG" --verify-tag --notes-file notes.md
+          fi
 
   build:
     needs: release
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            files: dist/TermX-Setup-x64.exe dist/TermX-Portable-x64.exe
+          - os: macos-latest
+            files: dist/TermX-mac-arm64.dmg dist/TermX-mac-x64.dmg
+          - os: ubuntu-latest
+            files: dist/TermX-linux-x86_64.AppImage dist/TermX-linux-amd64.deb
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -43,9 +55,14 @@ jobs:
       - name: Add the Intel Mac terminal backend
         if: runner.os == 'macOS'
         run: npm install --no-save --force @lydell/node-pty-darwin-x64@1.2.0-beta.18
-      - name: Build and upload
-        run: npx electron-builder --publish always
+      - name: Build
+        run: npx electron-builder --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No signing certificates yet; see the README for the first-launch steps this needs.
           CSC_IDENTITY_AUTO_DISCOVERY: false
+      # Only the installers go on the release page; build leftovers stay behind.
+      - name: Upload the installers
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" ${{ matrix.files }} --clobber

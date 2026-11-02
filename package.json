@@ -1,7 +1,7 @@
 {
   "name": "termx",
   "productName": "TermX",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A modern terminal, SSH and SFTP workspace for Windows, macOS and Linux.",
   "main": "src/main.js",
   "author": {
@@ -51,7 +51,6 @@
   "build": {
     "appId": "com.termx.app",
     "productName": "TermX",
-    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "src/**/*",
       "package.json"
@@ -62,14 +61,6 @@
     "directories": {
       "output": "dist"
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "Shakeel-Hasssan",
-        "repo": "TermX",
-        "releaseType": "release"
-      }
-    ],
     "win": {
       "icon": "src/assets/icon.ico",
       "target": [
@@ -92,10 +83,12 @@
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
       "createDesktopShortcut": true,
-      "shortcutName": "TermX"
+      "shortcutName": "TermX",
+      "artifactName": "TermX-Setup-x64.exe",
+      "differentialPackage": false
     },
     "portable": {
-      "artifactName": "${productName}-${version}-win-portable.${ext}"
+      "artifactName": "TermX-Portable-x64.exe"
     },
     "mac": {
       "icon": "src/assets/icon-1024.png",
@@ -107,15 +100,12 @@
             "arm64",
             "x64"
           ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
         }
       ]
+    },
+    "dmg": {
+      "artifactName": "TermX-mac-${arch}.dmg",
+      "writeUpdateInfo": false
     },
     "linux": {
       "icon": "src/assets/icon-1024.png",
@@ -135,6 +125,12 @@
           ]
         }
       ]
+    },
+    "appImage": {
+      "artifactName": "TermX-linux-x86_64.AppImage"
+    },
+    "deb": {
+      "artifactName": "TermX-linux-amd64.deb"
     }
   }
 }

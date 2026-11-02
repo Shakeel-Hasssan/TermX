@@ -29,16 +29,18 @@ If you live in terminals all day (tailing logs, jumping between servers, moving 
 
 ## Download
 
-Get the latest version from the **[Releases page](https://github.com/Shakeel-Hasssan/TermX/releases/latest)**.
+Click the link for your computer. It always downloads the latest version.
 
-| Platform | File to download |
+| Your computer | Download |
 |---|---|
-| **Windows** 10/11 (installer) | `TermX-<version>-win-x64.exe` |
-| **Windows** (portable, no install) | `TermX-<version>-win-portable.exe` |
-| **macOS**, Apple silicon (M1 and later) | `TermX-<version>-mac-arm64.dmg` |
-| **macOS**, Intel | `TermX-<version>-mac-x64.dmg` |
-| **Linux**, any distro | `TermX-<version>-linux-x86_64.AppImage` |
-| **Linux**, Debian or Ubuntu | `TermX-<version>-linux-amd64.deb` |
+| **Windows 10 / 11** | [**TermX-Setup-x64.exe**](https://github.com/Shakeel-Hasssan/TermX/releases/latest/download/TermX-Setup-x64.exe) (installer, recommended) |
+| Windows, without installing | [TermX-Portable-x64.exe](https://github.com/Shakeel-Hasssan/TermX/releases/latest/download/TermX-Portable-x64.exe) (run from any folder or USB stick) |
+| **Mac with Apple silicon** (M1, M2, M3, M4) | [**TermX-mac-arm64.dmg**](https://github.com/Shakeel-Hasssan/TermX/releases/latest/download/TermX-mac-arm64.dmg) |
+| Mac with Intel | [TermX-mac-x64.dmg](https://github.com/Shakeel-Hasssan/TermX/releases/latest/download/TermX-mac-x64.dmg) |
+| **Linux** (any distro) | [**TermX-linux-x86_64.AppImage**](https://github.com/Shakeel-Hasssan/TermX/releases/latest/download/TermX-linux-x86_64.AppImage) |
+| Linux (Ubuntu, Debian) | [TermX-linux-amd64.deb](https://github.com/Shakeel-Hasssan/TermX/releases/latest/download/TermX-linux-amd64.deb) |
+
+Not sure which Mac you have? Apple menu → **About This Mac**: "Chip: Apple M…" means Apple silicon, "Processor: Intel" means Intel. Older versions and release notes are on the [Releases page](https://github.com/Shakeel-Hasssan/TermX/releases).
 
 ### System requirements
 
@@ -70,11 +72,11 @@ TermX isn't code-signed yet, so each system asks you to confirm the first time y
   ```
 - **Linux (AppImage):** make it executable, then run it:
   ```bash
-  chmod +x TermX-*.AppImage && ./TermX-*.AppImage
+  chmod +x TermX-linux-x86_64.AppImage && ./TermX-linux-x86_64.AppImage
   ```
 - **Linux (.deb):**
   ```bash
-  sudo apt install ./TermX-*.deb
+  sudo apt install ./TermX-linux-amd64.deb
   ```
 
 ## Features

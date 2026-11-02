@@ -1,12 +1,16 @@
-## Download
+## Which file do I need?
 
-| Platform | File |
+| Your computer | Download |
 |---|---|
-| **Windows** (installer) | `TermX-<version>-win-x64.exe` |
-| **Windows** (portable, no install) | `TermX-<version>-win-portable.exe` |
-| **macOS** Apple silicon (M1 and later) | `TermX-<version>-mac-arm64.dmg` |
-| **macOS** Intel | `TermX-<version>-mac-x64.dmg` |
-| **Linux** (any distro) | `TermX-<version>-linux-x86_64.AppImage` |
-| **Linux** (Debian, Ubuntu) | `TermX-<version>-linux-amd64.deb` |
+| **Windows 10 / 11** | [**TermX-Setup-x64.exe**](https://github.com/Shakeel-Hasssan/TermX/releases/download/{{TAG}}/TermX-Setup-x64.exe) (installer, recommended) |
+| Windows, without installing | [TermX-Portable-x64.exe](https://github.com/Shakeel-Hasssan/TermX/releases/download/{{TAG}}/TermX-Portable-x64.exe) (run from any folder or USB stick) |
+| **Mac with Apple silicon** (M1, M2, M3, M4) | [**TermX-mac-arm64.dmg**](https://github.com/Shakeel-Hasssan/TermX/releases/download/{{TAG}}/TermX-mac-arm64.dmg) |
+| Mac with Intel | [TermX-mac-x64.dmg](https://github.com/Shakeel-Hasssan/TermX/releases/download/{{TAG}}/TermX-mac-x64.dmg) |
+| **Linux** (any distro) | [**TermX-linux-x86_64.AppImage**](https://github.com/Shakeel-Hasssan/TermX/releases/download/{{TAG}}/TermX-linux-x86_64.AppImage) |
+| Linux (Ubuntu, Debian) | [TermX-linux-amd64.deb](https://github.com/Shakeel-Hasssan/TermX/releases/download/{{TAG}}/TermX-linux-amd64.deb) |
 
-The builds aren't code-signed yet, so your system will warn the first time you open TermX. See [First launch](https://github.com/Shakeel-Hasssan/TermX#first-launch) for the one-time steps.
+Not sure which Mac you have? Click the Apple menu → **About This Mac**. "Chip: Apple M…" means Apple silicon; "Processor: Intel" means Intel.
+
+You can ignore the **Source code** files at the bottom; they're for developers.
+
+TermX isn't code-signed yet, so Windows and macOS ask you to confirm the first time you open it. See [First launch](https://github.com/Shakeel-Hasssan/TermX#first-launch) for the one-time steps, and [System requirements](https://github.com/Shakeel-Hasssan/TermX#system-requirements) for what each platform needs.
