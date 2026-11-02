@@ -40,6 +40,25 @@ Get the latest version from the **[Releases page](https://github.com/Shakeel-Has
 | **Linux**, any distro | `TermX-<version>-linux-x86_64.AppImage` |
 | **Linux**, Debian or Ubuntu | `TermX-<version>-linux-amd64.deb` |
 
+### System requirements
+
+The installers include everything TermX needs. You don't need Node.js, npm or Git to use it; those are only for [building from source](#build-from-source).
+
+| Platform | Requirement |
+|---|---|
+| **Windows** | Windows 10 or 11, 64-bit |
+| **macOS** | macOS 12 Monterey or newer (pick the Apple silicon or Intel download to match your Mac) |
+| **Linux** | 64-bit (x86_64) on a current distro, such as Ubuntu 20.04+, Debian 11+ or Fedora |
+| **Disk space** | About 300 MB |
+
+Only needed for some features:
+
+- **AppImage on Ubuntu 22.04 and newer** needs FUSE, which isn't installed by default: `sudo apt install libfuse2` (on Ubuntu 24.04 the package is `libfuse2t64`). The `.deb` doesn't need it.
+- **Remembering passwords on Linux** needs a keyring such as GNOME Keyring or KWallet (most desktops include one). Without it, TermX asks for the password each time.
+- **"SSH agent" sign-in** needs an agent running. On Windows, start the *OpenSSH Authentication Agent* service. Password and key sign-in work without it.
+- **Git Bash and WSL** appear as shells only if they're installed. PowerShell and CMD are always available on Windows.
+- **Live server stats** (CPU, RAM, disk, uptime) are shown for Linux servers.
+
 ### First launch
 
 TermX isn't code-signed yet, so each system asks you to confirm the first time you open it:
