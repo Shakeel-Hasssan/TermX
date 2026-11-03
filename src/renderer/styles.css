@@ -696,3 +696,22 @@ button:focus-visible, .card:focus-visible, .theme-chip:focus-visible, .import-sr
 #btn-update.busy .ico { animation: spin 1s linear infinite; }
 .update-modal .bar { height: 7px; margin-top: 4px; }
 .update-modal .status { margin-top: 8px; color: var(--muted); font-size: 11.5px; }
+
+/* ---- compact chrome: rail flush with the window edge, shorter bars ---- */
+:root { --gap: 6px; --bar-h: 36px; }
+.body { padding: 0 var(--gap) var(--gap) 0; }
+.rail { width: 44px; gap: 2px; padding: 6px 0; border-radius: 0; box-shadow: 1px 0 0 var(--edge); }
+.rail-logo { width: 24px; height: 24px; margin: 0 0 6px; }
+.rail-btn { width: 32px; height: 32px; border-radius: 9px; }
+.rail-btn .ico { width: 17px; height: 17px; }
+.rail-btn.active::before { left: -6px; top: 8px; bottom: 8px; }
+.rail-btn .badge, #btn-update.has-update::after { top: 4px; right: 4px; }
+.sidebar, .main { border-radius: 0 0 12px 12px; }
+.panel-head { height: var(--bar-h); }
+.tabbar { height: var(--bar-h); padding-left: 6px; }
+.tab { height: 28px; border-radius: 8px; }
+.tabs:empty + .new-tab #btn-new-tab { height: 26px; padding: 0 10px 0 8px; }
+.tabs:empty + .new-tab #btn-new-tab::after { font-size: 12px; }
+.platform-darwin .rail { padding-top: 34px !important; }
+/* the traffic lights reach past the rail; keep the tabs clear of them when the sidebar is hidden */
+.platform-darwin .sidebar.collapsed ~ .main .tabbar { padding-left: 26px; }
