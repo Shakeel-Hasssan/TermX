@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const invoke = (ch) => (...args) => ipcRenderer.invoke(ch, ...args);
 const fire = (ch) => (...args) => ipcRenderer.send(ch, ...args);
-const EVENTS = ['term:data', 'term:exit', 'ssh:stats', 'sftp:progress', 'sftp:synced'];
+const EVENTS = ['term:data', 'term:exit', 'ssh:stats', 'sftp:progress', 'sftp:synced', 'update:progress'];
 
 contextBridge.exposeInMainWorld('termx', {
   info: invoke('app:info'),
@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('termx', {
   folders: {
     list: invoke('folders:list'),
     save: invoke('folders:save'),
+    colors: invoke('folders:colors'),
+    saveColors: invoke('folders:saveColors'),
   },
   importer: {
     scan: invoke('import:scan'),
@@ -46,6 +48,10 @@ contextBridge.exposeInMainWorld('termx', {
   flows: {
     list: invoke('flows:list'),
     save: invoke('flows:save'),
+  },
+  update: {
+    check: invoke('update:check'),
+    install: invoke('update:install'),
   },
   pickKey: invoke('dialog:pickKey'),
   clipboardRead: invoke('clipboard:read'),

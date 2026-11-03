@@ -1,11 +1,11 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, clipboard, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, clipboard, Menu, net } = require('electron');
 const path = require('path');
 const posix = path.posix;
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
-const { execFile } = require('child_process');
+const { execFile, spawn } = require('child_process');
 const { StringDecoder } = require('string_decoder');
 const pty = require('@lydell/node-pty');
 const { Client } = require('ssh2');
@@ -559,6 +559,13 @@ ipcMain.handle('sessions:setFolders', (_e, changes) => {
 // Folders that exist on their own, so an empty folder survives until it is deleted.
 ipcMain.handle('folders:list', () => readJson('folders.json', []));
 ipcMain.handle('folders:save', (_e, list) => writeJson('folders.json', Array.isArray(list) ? list.map(String) : []));
+// Folder path -> color; folders without an entry keep the default yellow.
+ipcMain.handle('folders:colors', () => readJson('folder-colors.json', {}));
+ipcMain.handle('folders:saveColors', (_e, map) => {
+  const clean = {};
+  for (const [k, v] of Object.entries(map && typeof map === 'object' ? map : {})) if (/^#[0-9a-f]{6}$/i.test(v)) clean[String(k)] = v.toLowerCase();
+  writeJson('folder-colors.json', clean);
+});
 ipcMain.handle('sessions:forgetPassword', (_e, id) => {
   const list = loadSessions();
   const s = list.find((x) => x.id === id);
@@ -621,6 +628,142 @@ ipcMain.handle('app:info', () => ({
 }));
 ipcMain.on('app:devtools', () => win && win.webContents.toggleDevTools());
 ipcMain.on('app:openExternal', (_e, url) => { if (/^https?:\/\//i.test(url)) shell.openExternal(url); });
+
+// ---------- updates ----------
+// Releases come from GitHub; each platform takes the installer that matches how TermX was installed.
+const RELEASES = 'https://api.github.com/repos/Shakeel-Hasssan/TermX/releases/latest';
+const newer = (a, b) => {
+  const pa = String(a).replace(/^v/, '').split(/[.-]/).map(Number);
+  const pb = String(b).replace(/^v/, '').split(/[.-]/).map(Number);
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  return false;
+};
+// How this copy was installed decides which file to download and how to swap it in.
+function installKind() {
+  if (!app.isPackaged) return 'source';
+  if (process.platform === 'win32') return process.env.PORTABLE_EXECUTABLE_FILE ? 'portable' : 'nsis';
+  if (process.platform === 'darwin') return 'dmg';
+  return process.env.APPIMAGE ? 'appimage' : 'deb';
+}
+const ASSETS = {
+  nsis: 'TermX-Setup-x64.exe',
+  portable: 'TermX-Portable-x64.exe',
+  dmg: `TermX-mac-${process.arch === 'arm64' ? 'arm64' : 'x64'}.dmg`,
+  appimage: 'TermX-linux-x86_64.AppImage',
+  deb: 'TermX-linux-amd64.deb',
+};
+let update = null; // latest check result, reused by update:install
+
+ipcMain.handle('update:check', async () => {
+  const res = await net.fetch(RELEASES, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'TermX' } });
+  if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
+  const rel = await res.json();
+  const kind = installKind();
+  const asset = (rel.assets || []).find((a) => a.name === ASSETS[kind]);
+  update = {
+    current: app.getVersion(),
+    latest: String(rel.tag_name || '').replace(/^v/, ''),
+    page: rel.html_url,
+    kind,
+    asset: asset ? { name: asset.name, size: asset.size, url: asset.browser_download_url } : null,
+  };
+  update.available = newer(update.latest, update.current);
+  return update;
+});
+
+async function download(asset) {
+  const dir = path.join(app.getPath('temp'), 'termx-update');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, asset.name);
+  const res = await net.fetch(asset.url, { headers: { 'User-Agent': 'TermX' } });
+  if (!res.ok || !res.body) throw new Error(`Download failed (${res.status})`);
+  const out = fs.createWriteStream(file);
+  let got = 0;
+  let last = 0;
+  try {
+    for await (const chunk of res.body) {
+      got += chunk.length;
+      if (!out.write(chunk)) await new Promise((r) => out.once('drain', r));
+      if (Date.now() - last > 150) { last = Date.now(); win?.webContents.send('update:progress', got, asset.size); }
+    }
+  } finally {
+    await new Promise((r) => out.end(r));
+  }
+  if (asset.size && got !== asset.size) throw new Error('Download was incomplete, please try again');
+  win?.webContents.send('update:progress', got, asset.size);
+  return file;
+}
+
+// A detached script waits for this process to exit, swaps the new build in and starts it.
+function runAfterExit(script, ext) {
+  const file = path.join(app.getPath('temp'), 'termx-update', 'apply' + ext);
+  fs.writeFileSync(file, script);
+  const child = process.platform === 'win32'
+    ? spawn('cmd.exe', ['/d', '/c', file], { detached: true, stdio: 'ignore', windowsHide: true })
+    : spawn('/bin/sh', [file], { detached: true, stdio: 'ignore' });
+  child.unref();
+}
+const sh = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
+
+ipcMain.handle('update:install', async () => {
+  if (!update?.available) throw new Error('No update to install');
+  if (update.kind === 'source') throw new Error('TermX is running from source; pull the latest code instead');
+  if (!update.asset) throw new Error(`This release has no ${ASSETS[update.kind]}`);
+  const file = await download(update.asset);
+  const pid = process.pid;
+
+  if (update.kind === 'nsis') {
+    // The installer upgrades in place silently, then --force-run starts the new version.
+    spawn(file, ['/S', '--updated', '--force-run'], { detached: true, stdio: 'ignore' }).unref();
+  } else if (update.kind === 'portable') {
+    const target = process.env.PORTABLE_EXECUTABLE_FILE;
+    // The portable launcher keeps its exe locked until it exits, so keep retrying the copy.
+    runAfterExit([
+      '@echo off', 'set n=0', ':retry',
+      `copy /y "${file}" "${target}" >nul 2>&1 && goto done`,
+      'set /a n+=1', 'if %n% geq 60 exit /b 1', 'timeout /t 1 /nobreak >nul', 'goto retry',
+      ':done', `start "" "${target}"`, `del "${file}"`, '(goto) 2>nul & del "%~f0"',
+    ].join('\r\n'), '.cmd');
+  } else if (update.kind === 'dmg') {
+    const target = path.resolve(process.execPath, '..', '..', '..');
+    if (!target.endsWith('.app')) throw new Error('Could not find the TermX app bundle');
+    // Not writable (e.g. still running from the disk image): open the .dmg and let the user drag it.
+    try { fs.accessSync(path.dirname(target), fs.constants.W_OK); } catch {
+      shell.openPath(file);
+      return { manual: true };
+    }
+    const old = target + '.old';
+    runAfterExit(`
+while kill -0 ${pid} 2>/dev/null; do sleep 0.5; done
+MNT=$(mktemp -d)
+hdiutil attach -nobrowse -noautoopen -mountpoint "$MNT" ${sh(file)} >/dev/null || exit 1
+APP=$(find "$MNT" -maxdepth 1 -name '*.app' | head -n 1)
+rm -rf ${sh(old)}
+if mv ${sh(target)} ${sh(old)} && ditto "$APP" ${sh(target)}; then rm -rf ${sh(old)}; else rm -rf ${sh(target)}; mv ${sh(old)} ${sh(target)}; fi
+hdiutil detach "$MNT" -quiet
+rm -f ${sh(file)}
+xattr -dr com.apple.quarantine ${sh(target)} 2>/dev/null
+open ${sh(target)}
+`, '.sh');
+  } else if (update.kind === 'appimage') {
+    const target = process.env.APPIMAGE;
+    runAfterExit(`
+while kill -0 ${pid} 2>/dev/null; do sleep 0.5; done
+cp -f ${sh(file)} ${sh(target)} && chmod +x ${sh(target)} && rm -f ${sh(file)}
+nohup ${sh(target)} >/dev/null 2>&1 &
+`, '.sh');
+  } else {
+    // .deb needs root; pkexec asks for the password, otherwise hand the package to the system installer.
+    const ok = await new Promise((r) => execFile('pkexec', ['dpkg', '-i', file], (err) => r(!err)));
+    if (!ok) { shell.openPath(file); return { manual: true }; }
+    runAfterExit(`
+while kill -0 ${pid} 2>/dev/null; do sleep 0.5; done
+nohup ${sh(process.execPath)} >/dev/null 2>&1 &
+`, '.sh');
+  }
+  setTimeout(() => app.quit(), 300);
+  return { manual: false };
+});
 
 // ---------- window ----------
 function createWindow() {

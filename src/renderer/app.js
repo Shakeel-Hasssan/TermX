@@ -35,6 +35,7 @@ const DEFAULTS = {
   sidebarW: 280,
   selectionColor: '#fbbf24',
   highlightColor: '#34d399',
+  autoUpdateCheck: true,
 };
 function loadSettings() {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('termx.settings') || '{}') }; } catch { return { ...DEFAULTS }; }
@@ -59,6 +60,7 @@ const state = {
   collapsed: new Set(),
   selectedSession: null,
   folders: [], // saved folder paths, so empty folders persist
+  folderColors: {}, // folder path -> color
   flows: [],
   selectedFlow: null,
   recording: null, // { tab, steps, last } while a flow is being recorded
@@ -1288,7 +1290,7 @@ function closeGrep(tab) {
 
 // ---------- sessions sidebar ----------
 async function refreshSessions() {
-  [state.sessions, state.folders] = await Promise.all([api.sessions.list(), api.folders.list()]);
+  [state.sessions, state.folders, state.folderColors] = await Promise.all([api.sessions.list(), api.folders.list(), api.folders.colors()]);
   renderSessions();
   if (!state.tabs.length) renderWelcome();
 }
@@ -1395,7 +1397,7 @@ function drawFolder(list, n, depth, open) {
     const key = 'f:' + child.path;
     const shut = !open && state.collapsed.has(key);
     const row = el(`<div class="folder-row droppable ${shut ? 'collapsed' : ''}" style="${pad(depth)}" draggable="true" title="${esc(child.path)}">
-      ${icon('chevronDown')}<span class="fico">${icon('folder')}</span><span class="fname">${esc(child.name)}</span>
+      ${icon('chevronDown')}<span class="fico" ${state.folderColors[child.path] ? `style="--fc:${state.folderColors[child.path]}"` : ''}>${icon('folder')}</span><span class="fname">${esc(child.name)}</span>
       <button class="gbtn" title="Folder actions">${icon('more')}</button><span class="count">${child.count}</span></div>`);
     row.onclick = (e) => {
       if (e.target.closest('.gbtn')) { const r = e.target.closest('.gbtn').getBoundingClientRect(); return folderMenu(r.left, r.bottom + 4, child); }
@@ -1456,6 +1458,36 @@ async function saveFolders(list) {
   await api.folders.save(state.folders);
 }
 
+async function saveFolderColors(map) {
+  state.folderColors = map;
+  await api.folders.saveColors(map);
+}
+
+const FOLDER_COLOR = '#fcd34d';
+function pickFolderColor(n) {
+  const current = state.folderColors[n.path] || FOLDER_COLOR;
+  const swatches = [FOLDER_COLOR, ...COLORS.filter((c) => c !== '#fbbf24')];
+  const node = el(`<div class="modal sm">
+    <div class="modal-head"><div><h3>Folder color</h3><div class="sub">${esc(n.path)}</div></div></div>
+    <div class="modal-body"><div class="colors folder-colors">
+      ${swatches.map((c) => `<button type="button" data-c="${c}" style="background:${c};color:${c}" class="${current === c ? 'on' : ''}" title="${c === FOLDER_COLOR ? 'Default' : c}"></button>`).join('')}
+      <label class="custom-color ${swatches.includes(current) ? '' : 'on'}" title="Custom color" style="color:${current}"><input type="color" value="${current}"></label>
+    </div></div>
+    <div class="modal-foot"><button class="btn" data-x>Close</button></div></div>`);
+  const set = async (c) => {
+    c = c.toLowerCase();
+    const next = { ...state.folderColors };
+    if (c === FOLDER_COLOR) delete next[n.path]; else next[n.path] = c;
+    await saveFolderColors(next);
+    closeModal();
+    renderSessions();
+  };
+  $$('button[data-c]', node).forEach((b) => (b.onclick = () => set(b.dataset.c)));
+  node.querySelector('input[type=color]').onchange = (e) => set(e.target.value);
+  node.querySelector('[data-x]').onclick = () => closeModal();
+  openModal(node);
+}
+
 async function moveSessions(ids, folder) {
   await api.sessions.setFolders(ids.map((id) => ({ id, folder })));
   if (folder) await saveFolders([...state.folders, folder]);
@@ -1483,6 +1515,7 @@ async function renameFolder(from, to) {
   const changes = state.sessions.filter((s) => inFolder(normFolder(s.folder), from)).map((s) => ({ id: s.id, folder: swap(normFolder(s.folder)) }));
   if (changes.length) await api.sessions.setFolders(changes);
   await saveFolders([...state.folders.map((f) => swap(normFolder(f))), to]);
+  await saveFolderColors(Object.fromEntries(Object.entries(state.folderColors).map(([k, v]) => [swap(k), v])));
   for (const k of [...state.collapsed]) if (k.startsWith('f:') && inFolder(k.slice(2), from)) { state.collapsed.delete(k); state.collapsed.add('f:' + swap(k.slice(2))); }
   for (let p = parentFolder(to); p; p = parentFolder(p)) state.collapsed.delete('f:' + p);
   await refreshSessions();
@@ -1499,7 +1532,10 @@ async function promptRename(n) {
 function deleteFolder(n) {
   const inside = subtreeSessions(n);
   const parent = parentFolder(n.path);
-  const forget = async () => saveFolders(state.folders.filter((f) => !inFolder(normFolder(f), n.path)));
+  const forget = async () => {
+    await saveFolders(state.folders.filter((f) => !inFolder(normFolder(f), n.path)));
+    await saveFolderColors(Object.fromEntries(Object.entries(state.folderColors).filter(([k]) => !inFolder(k, n.path))));
+  };
   if (!inside.length) {
     return confirmDialog('Delete folder?', `“${n.name}” is empty and will be removed.`).then(async (ok) => { if (ok) { await forget(); renderSessions(); } });
   }
@@ -1518,6 +1554,7 @@ function deleteFolder(n) {
     const lift = (f) => (inFolder(f, n.path) ? normFolder(parent + ' / ' + f.slice(n.path.length).replace(/^ \/ /, '')) : f);
     await api.sessions.setFolders(inside.map((s) => ({ id: s.id, folder: lift(normFolder(s.folder)) })));
     await saveFolders(state.folders.map((f) => normFolder(f)).filter((f) => f !== n.path).map(lift));
+    await saveFolderColors(Object.fromEntries(Object.entries(state.folderColors).filter(([k]) => k !== n.path).map(([k, v]) => [lift(k), v])));
     await refreshSessions();
     toast(`Folder removed, ${many} kept`);
   };
@@ -1547,6 +1584,7 @@ function folderMenu(x, y, n) {
     all.length ? { label: `Connect all (${all.length})`, icon: 'play', action: () => all.forEach((s) => openSsh(s)) } : null,
     '-',
     { label: 'Rename…', icon: 'edit', action: () => promptRename(n) },
+    { label: 'Change color…', icon: 'palette', action: () => pickFolderColor(n) },
     parentFolder(n.path) ? { label: 'Move to top level', icon: 'arrowUp', action: () => renameFolder(n.path, n.name) } : null,
     '-',
     { label: 'Delete folder…', icon: 'trash', danger: true, action: () => deleteFolder(n) },
@@ -2274,14 +2312,15 @@ function renderSettings() {
     </div></div>`).join('')}
     <div class="hl-preview"><span style="background:${settings.selectionColor}70">selected text</span><span style="background:${settings.highlightColor};color:#0b0d12">search match</span></div>
     <div class="section-label">Behavior</div>
-    ${[['cursorBlink', 'Blinking cursor'], ['copyOnSelect', 'Copy on select'], ['rightClickPaste', 'Right-click pastes (copies if selected)'], ['showHidden', 'Show hidden files in SFTP']]
+    ${[['cursorBlink', 'Blinking cursor'], ['copyOnSelect', 'Copy on select'], ['rightClickPaste', 'Right-click pastes (copies if selected)'], ['showHidden', 'Show hidden files in SFTP'], ['autoUpdateCheck', 'Check for updates on startup']]
       .map(([k, label]) => `<label class="toggle"><span>${label}</span><span class="switch"><input type="checkbox" name="${k}" ${settings[k] ? 'checked' : ''}><i></i></span></label>`).join('')}
     <div class="field" style="margin-top:12px"><label>Scrollback lines</label>
       <select class="input" name="scrollback">${[1000, 5000, 10000, 50000, 100000].map((n) => `<option value="${n}" ${settings.scrollback === n ? 'selected' : ''}>${n.toLocaleString()}</option>`).join('')}</select></div>
     <div class="field"><label>Default shell</label>
       <select class="input" name="defaultShell">${state.shells.map((s) => `<option value="${esc(s.id)}" ${defaultShell()?.id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
     <div class="section-label">About</div>
-    <div class="hint" style="color:var(--muted);font-size:11.5px">TermX ${esc(state.info.version || '')} · Electron · xterm.js · ssh2</div>`;
+    <div class="hint" style="color:var(--muted);font-size:11.5px">TermX ${esc(state.info.version || '')} · Electron · xterm.js · ssh2</div>
+    <button class="btn" data-update style="margin-top:10px">${icon('upgrade')}<span>Check for updates</span></button>`;
   // Group each labelled section into its own card.
   let card = null;
   for (const n of [...root.children]) {
@@ -2310,6 +2349,7 @@ function renderSettings() {
     row.querySelector('input[type=color]').onchange = (e) => set(e.target.value);
   }
   root.querySelector('[name=defaultShell]').onchange = (e) => { settings.defaultShell = e.target.value; saveSettings(); };
+  root.querySelector('[data-update]').onclick = () => checkForUpdates();
 }
 
 function setFontSize(n) {
@@ -2491,6 +2531,71 @@ function handleShortcut(e, fromTerm) {
   return false;
 }
 
+// ---------- updates ----------
+let updateInfo = null;
+let updating = false;
+async function checkForUpdates({ quiet = false } = {}) {
+  if (updating) return toast('The update is already downloading');
+  const btn = $('#btn-update');
+  btn.classList.add('busy');
+  try {
+    updateInfo = await api.update.check();
+  } catch (err) {
+    if (!quiet) toast('Could not check for updates: ' + cleanErr(err), 'err');
+    return;
+  } finally {
+    btn.classList.remove('busy');
+  }
+  btn.classList.toggle('has-update', updateInfo.available);
+  btn.title = updateInfo.available ? `Update to TermX ${updateInfo.latest}` : 'Check for updates';
+  if (!updateInfo.available) { if (!quiet) toast(`You're on the latest version (${updateInfo.current})`); return; }
+  if (quiet) toast(`TermX ${updateInfo.latest} is available. Click the update button to install it.`);
+  else openUpdate();
+}
+
+function openUpdate() {
+  if (updating) return toast('The update is already downloading');
+  const u = updateInfo;
+  // Builds run from source, or a release missing this platform's file, can only point at the release page.
+  const auto = u.kind !== 'source' && u.asset;
+  const node = el(`<div class="modal sm update-modal">
+    <div class="modal-head"><div><h3>TermX ${esc(u.latest)} is available</h3><div class="sub">You have ${esc(u.current)}.${auto && state.tabs.length ? ' Open terminals will close when TermX restarts.' : ''}</div></div></div>
+    <div class="modal-body">
+      <div class="bar hidden"><i style="width:0"></i></div>
+      <div class="status">${auto ? `Downloads ${esc(u.asset.name)} (${fmtBytes(u.asset.size)}), installs it and restarts TermX.` : u.kind === 'source' ? 'TermX is running from source. Pull the latest code to update.' : 'This release has no installer for your system yet.'}</div>
+    </div>
+    <div class="modal-foot"><button class="btn left" data-page>Release page</button><button class="btn" data-x>Later</button>${auto ? '<button class="btn primary" data-go autofocus>Update now</button>' : ''}</div></div>`);
+  const status = node.querySelector('.status');
+  const bar = node.querySelector('.bar');
+  node.querySelector('[data-page]').onclick = () => api.openExternal(u.page);
+  node.querySelector('[data-x]').onclick = () => closeModal();
+  const go = node.querySelector('[data-go]');
+  if (go) go.onclick = async () => {
+    updating = true;
+    go.disabled = true;
+    go.textContent = 'Updating…';
+    bar.classList.remove('hidden');
+    const off = api.on('update:progress', (got, total) => {
+      bar.firstElementChild.style.width = (total ? Math.min(100, (got / total) * 100) : 0) + '%';
+      status.textContent = got >= total ? 'Installing… TermX will restart.' : `Downloading ${fmtBytes(got)} of ${fmtBytes(total)}`;
+    });
+    try {
+      const r = await api.update.install();
+      if (r.manual) { closeModal(); toast('The installer has opened. Finish the update there.'); }
+      else status.textContent = 'Installing… TermX will restart.';
+    } catch (err) {
+      updating = false;
+      status.textContent = cleanErr(err);
+      bar.classList.add('hidden');
+      go.disabled = false;
+      go.textContent = 'Try again';
+    } finally {
+      off();
+    }
+  };
+  openModal(node);
+}
+
 // ---------- init ----------
 async function init() {
   hydrateIcons();
@@ -2557,6 +2662,8 @@ async function init() {
   };
   $('#btn-palette').onclick = openPalette;
   $('#btn-multiexec').onclick = toggleMultiExec;
+  $('#btn-update').onclick = () => (updateInfo?.available ? openUpdate() : checkForUpdates());
+  if (settings.autoUpdateCheck) setTimeout(() => checkForUpdates({ quiet: true }), 4000);
   $('#session-filter').oninput = renderSessions;
   $('#quick-form').onsubmit = (e) => {
     e.preventDefault();

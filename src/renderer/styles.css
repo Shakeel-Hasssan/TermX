@@ -664,7 +664,8 @@ button:focus-visible, .card:focus-visible, .theme-chip:focus-visible, .import-sr
 .folder-row:hover { background: rgba(255, 255, 255, 0.045); color: var(--text); }
 .folder-row > .ico { width: 13px; height: 13px; color: var(--muted); transition: transform .15s; }
 .folder-row.collapsed > .ico { transform: rotate(-90deg); }
-.folder-row .fico { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex: none; color: #fcd34d; background: rgba(252, 211, 77, 0.1); box-shadow: inset 0 0 0 1px rgba(252, 211, 77, 0.18); }
+.folder-row .fico { --fc: #fcd34d; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex: none; color: var(--fc); background: color-mix(in srgb, var(--fc) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fc) 18%, transparent); }
+.folder-colors { flex-wrap: wrap; padding: 4px 2px; }
 .folder-row .fico .ico { width: 13px; height: 13px; }
 .folder-row .fname { flex: 1; min-width: 0; font-weight: 550; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .folder-row .count, #session-list .group-title .count { flex: none; }
@@ -692,3 +693,11 @@ button:focus-visible, .card:focus-visible, .theme-chip:focus-visible, .import-sr
 .choice small { color: var(--muted); font-size: 11.5px; }
 .choice.danger > .ico { color: var(--err); }
 .choice.danger:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(248, 113, 113, 0.55), 0 10px 20px -12px rgba(0, 0, 0, 0.9); }
+
+/* ---- updates ---- */
+#btn-update { position: relative; }
+#btn-update.has-update { color: #86efac; }
+#btn-update.has-update::after { content: ""; position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px var(--surface), 0 0 8px var(--ok); }
+#btn-update.busy .ico { animation: spin 1s linear infinite; }
+.update-modal .bar { height: 7px; margin-top: 4px; }
+.update-modal .status { margin-top: 8px; color: var(--muted); font-size: 11.5px; }
