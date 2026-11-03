@@ -2663,6 +2663,12 @@ async function init() {
   $('#btn-palette').onclick = openPalette;
   $('#btn-multiexec').onclick = toggleMultiExec;
   $('#btn-update').onclick = () => (updateInfo?.available ? openUpdate() : checkForUpdates());
+  // Coming back to the window (after the host-key prompt, or another app) puts the cursor back in
+  // the active terminal, unless a dialog or another field is holding focus.
+  addEventListener('focus', () => setTimeout(() => {
+    const a = document.activeElement;
+    if (state.active && (!a || a === document.body) && $('#modal-root').classList.contains('hidden')) state.active.term.focus();
+  }));
   if (settings.autoUpdateCheck) setTimeout(() => checkForUpdates({ quiet: true }), 4000);
   $('#session-filter').oninput = renderSessions;
   $('#quick-form').onsubmit = (e) => {

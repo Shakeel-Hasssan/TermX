@@ -33,7 +33,10 @@ function writeJson(name, value) {
   fs.mkdirSync(app.getPath('userData'), { recursive: true });
   fs.writeFileSync(dataFile(name), JSON.stringify(value, null, 2));
 }
-const canEncrypt = () => safeStorage.isEncryptionAvailable();
+// On Linux without a keyring (GNOME Keyring, KWallet) Electron falls back to a fixed built-in key,
+// which anyone could undo, so treat that as having no secure storage and don't save passwords.
+const canEncrypt = () => safeStorage.isEncryptionAvailable()
+  && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text');
 const encrypt = (s) => (s && canEncrypt() ? safeStorage.encryptString(s).toString('base64') : '');
 function decrypt(s) {
   if (!s) return '';
