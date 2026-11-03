@@ -776,9 +776,10 @@ function createWindow() {
     icon: ICON,
     backgroundColor: '#0a0d13',
     titleBarStyle: 'hidden',
-    // Windows and Linux draw their own min/max/close buttons over the hidden title bar; macOS keeps its traffic lights.
-    titleBarOverlay: process.platform !== 'darwin' ? { color: '#0a0d13', symbolColor: '#aab3c2', height: 44 } : undefined,
-    trafficLightPosition: { x: 16, y: 16 },
+    // There is no title bar: Windows and Linux draw min/max/close over the tab bar row (10px gap + 46px bar),
+    // and macOS puts its traffic lights at the top of the rail.
+    titleBarOverlay: process.platform !== 'darwin' ? { color: '#00000000', symbolColor: '#aab3c2', height: 56 } : undefined,
+    trafficLightPosition: { x: 14, y: 20 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

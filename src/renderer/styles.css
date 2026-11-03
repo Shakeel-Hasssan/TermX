@@ -51,21 +51,19 @@ input, select, textarea { font: inherit; color: inherit; }
 
 #app { height: 100%; display: flex; flex-direction: column; }
 
-/* ---------- title bar ---------- */
-.titlebar {
-  height: var(--title-h); flex: none; display: flex; align-items: center; gap: 14px;
-  padding-left: 14px; -webkit-app-region: drag; background: var(--bg);
-}
-/* lines the quick bar up with the terminal panel: gutter + rail + gaps */
-.brand { display: flex; align-items: center; gap: 10px; width: calc(var(--sidebar-w) + 50px); min-width: 160px; }
-/* macOS traffic lights sit at the top left; keep the logo clear of them while the quick bar stays aligned with the sidebar edge. */
-.platform-darwin .titlebar { padding-left: 84px; }
-.platform-darwin .brand { width: calc(var(--sidebar-w) + 50px - 70px); min-width: 90px; }
-.logo { width: 30px; height: 30px; flex: none; margin: 0 -2px; filter: drop-shadow(0 6px 10px rgba(124,92,255,.45)); user-select: none; }
-.brand-name { font-weight: 650; letter-spacing: .2px; font-size: 13.5px; }
+/* ---------- window chrome ---------- */
+/* No title bar: the rail logo, panel heads and the tab bar drag the window. */
+.rail-logo, .panel-head, .tabbar { -webkit-app-region: drag; }
+.panel-head button, .tabbar .tab, .tabbar button, .grep-bar { -webkit-app-region: no-drag; }
+/* Windows/Linux draw min/max/close over the top right; keep tabs clear of them (env() is 0 on macOS). */
+.tabbar { padding-right: max(8px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) - var(--gap) + 6px)) !important; }
+/* macOS traffic lights sit at the top of the rail instead of the logo. */
+.platform-darwin .rail-logo { display: none; }
+.platform-darwin .rail { padding-top: 40px !important; }
+.rail-logo { width: 30px; height: 30px; flex: none; margin: 2px 0 8px; filter: drop-shadow(0 6px 10px rgba(124,92,255,.45)); user-select: none; }
 .quick {
-  -webkit-app-region: no-drag; flex: 0 1 520px; height: 30px; display: flex; align-items: center; gap: 8px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0 6px 0 10px; box-shadow: var(--well);
+  flex: none; margin: 0 12px 8px; height: 30px; display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 0 6px 0 9px; box-shadow: var(--well);
   transition: border-color .15s, box-shadow .15s;
 }
 .quick:focus-within { border-color: rgba(124,92,255,.55); box-shadow: var(--well), 0 0 0 3px rgba(124,92,255,.15), 0 0 24px -6px rgba(124,92,255,.5); }
@@ -73,8 +71,6 @@ input, select, textarea { font: inherit; color: inherit; }
 .quick input { flex: 1; background: none; border: 0; outline: none; min-width: 0; font-family: var(--font-mono); font-size: 12.5px; }
 .quick input::placeholder { font-family: var(--font-ui); color: var(--muted); }
 kbd { font: 10.5px var(--font-ui); color: var(--muted); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 5px; padding: 1px 5px; background: linear-gradient(180deg, rgba(255,255,255,.04), transparent); }
-.title-actions { display: flex; gap: 4px; -webkit-app-region: no-drag; }
-.drag-spacer { flex: 1; min-width: 150px; }
 .ghost-btn { height: 30px; width: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--text-2); }
 .ghost-btn { transition: background .15s, color .15s, box-shadow .15s, transform .1s; }
 .ghost-btn:hover { background: var(--surface-2); color: var(--text); box-shadow: var(--lift-1); }
@@ -83,7 +79,7 @@ kbd { font: 10.5px var(--font-ui); color: var(--muted); border: 1px solid var(--
 
 /* ---------- body ---------- */
 .body {
-  flex: 1; display: flex; min-height: 0; gap: var(--gap); padding: 2px var(--gap) var(--gap);
+  flex: 1; display: flex; min-height: 0; gap: var(--gap); padding: var(--gap);
   background:
     radial-gradient(800px 500px at 0% 100%, rgba(124,92,255,.10), transparent 65%),
     radial-gradient(700px 420px at 100% 100%, rgba(34,211,238,.06), transparent 60%), var(--bg);
@@ -577,11 +573,10 @@ button:focus-visible, .card:focus-visible, .theme-chip:focus-visible, .import-sr
 .rail { gap: 4px; padding: 10px 0; background: var(--sheen), var(--panel); }
 .sidebar { background: var(--sheen), var(--panel); }
 
-/* ---- title bar ---- */
-.quick { height: 32px; background: linear-gradient(180deg, #0b0e15, #0e121b); border-color: var(--edge); }
+/* ---- quick connect ---- */
+.quick { height: 32px; background: linear-gradient(180deg, #0a0d14, #0c1018); border-color: var(--edge); }
 .quick:hover { border-color: rgba(255, 255, 255, 0.12); }
-.title-actions { gap: 2px; padding: 2px; border-radius: 10px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--edge); }
-.title-actions .ghost-btn { height: 28px; width: 30px; }
+#btn-multiexec.on { color: #c4b5fd; background: var(--accent-soft); box-shadow: inset 0 0 0 1px rgba(124,92,255,.4), 0 0 18px -4px rgba(124,92,255,.6); }
 
 /* ---- rail ---- */
 .rail-btn { width: 38px; height: 38px; border-radius: 11px; }
@@ -697,7 +692,7 @@ button:focus-visible, .card:focus-visible, .theme-chip:focus-visible, .import-sr
 /* ---- updates ---- */
 #btn-update { position: relative; }
 #btn-update.has-update { color: #86efac; }
-#btn-update.has-update::after { content: ""; position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px var(--surface), 0 0 8px var(--ok); }
+#btn-update.has-update::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px var(--surface), 0 0 8px var(--ok); }
 #btn-update.busy .ico { animation: spin 1s linear infinite; }
 .update-modal .bar { height: 7px; margin-top: 4px; }
 .update-modal .status { margin-top: 8px; color: var(--muted); font-size: 11.5px; }

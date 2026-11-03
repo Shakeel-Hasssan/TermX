@@ -9,32 +9,18 @@
 </head>
 <body>
   <div id="app">
-    <header class="titlebar">
-      <div class="brand">
-        <img class="logo" src="../assets/icon.svg" alt="" draggable="false">
-        <span class="brand-name">TermX</span>
-      </div>
-      <form class="quick" id="quick-form" autocomplete="off">
-        <span class="quick-icon" data-icon="bolt"></span>
-        <input id="quick-input" spellcheck="false" placeholder="Quick connect — user@host:port">
-        <kbd>Enter</kbd>
-      </form>
-      <div class="title-actions">
-        <button class="ghost-btn" id="btn-palette" title="Command palette (Ctrl+Shift+P)"><span data-icon="command"></span></button>
-        <button class="ghost-btn" id="btn-multiexec" title="Multi-exec: type into all tabs (Ctrl+Shift+M)"><span data-icon="broadcast"></span></button>
-        <button class="ghost-btn" id="btn-update" title="Check for updates"><span data-icon="upgrade"></span></button>
-      </div>
-      <div class="drag-spacer"></div>
-    </header>
-
     <div class="body">
       <nav class="rail">
+        <img class="rail-logo" src="../assets/icon.svg" alt="TermX" title="TermX" draggable="false">
         <button class="rail-btn active" data-panel="sessions" title="Sessions"><span data-icon="server"></span></button>
         <button class="rail-btn" data-panel="search" title="Search (Ctrl+Shift+S)"><span data-icon="search"></span></button>
         <button class="rail-btn" id="rail-grep" title="Grep: filter the active terminal (Ctrl+Shift+G)"><span data-icon="filter"></span></button>
         <button class="rail-btn" data-panel="files" title="SFTP browser"><span data-icon="folder"></span></button>
         <button class="rail-btn" data-panel="flows" title="Flows: recorded and scripted input"><span data-icon="workflow"></span></button>
         <div class="rail-fill"></div>
+        <button class="rail-btn" id="btn-palette" title="Command palette (Ctrl+Shift+P)"><span data-icon="command"></span></button>
+        <button class="rail-btn" id="btn-multiexec" title="Multi-exec: type into all tabs (Ctrl+Shift+M)"><span data-icon="broadcast"></span></button>
+        <button class="rail-btn" id="btn-update" title="Check for updates"><span data-icon="upgrade"></span></button>
         <button class="rail-btn" data-panel="settings" title="Settings"><span data-icon="settings"></span></button>
       </nav>
 
@@ -48,6 +34,10 @@
               <button class="icon-btn" id="btn-new-session" title="New SSH session (Ctrl+Shift+N)"><span data-icon="plus"></span></button>
             </div>
           </div>
+          <form class="quick" id="quick-form" autocomplete="off">
+            <span class="quick-icon" data-icon="bolt"></span>
+            <input id="quick-input" spellcheck="false" placeholder="Quick connect — user@host:port" title="Type user@host:port and press Enter">
+          </form>
           <div class="search-box"><span data-icon="search"></span><input id="session-filter" placeholder="Filter sessions" spellcheck="false"></div>
           <div class="panel-scroll" id="session-list"></div>
         </section>
