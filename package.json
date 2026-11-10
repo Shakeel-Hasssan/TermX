@@ -1,7 +1,7 @@
 {
   "name": "termx",
   "productName": "TermX",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A modern terminal, SSH and SFTP workspace for Windows, macOS and Linux.",
   "main": "src/main.js",
   "author": {
