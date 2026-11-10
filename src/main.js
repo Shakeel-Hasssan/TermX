@@ -88,7 +88,7 @@ function closed(id, code) {
   const h = terms.get(id);
   if (!h) return;
   terms.delete(id);
-  if (h.statsTimer) clearInterval(h.statsTimer);
+  if (h.statsTimer) clearTimeout(h.statsTimer);
   for (const w of h.watchers || []) w.close();
   flush();
   send('term:exit', id, code ?? 0);
@@ -217,7 +217,11 @@ ipcMain.handle('term:ssh', (_e, { sessionId, config, password, passphrase, cols,
 
   const opts = {
     host: s.host, port, username: s.username,
-    readyTimeout: 60000, keepaliveInterval: 15000, tryKeyboard: true,
+    readyTimeout: 60000, tryKeyboard: true,
+    // A slow or flaky link can stall for a minute or more; only give up after ~5 minutes of silence.
+    keepaliveInterval: 30000, keepaliveCountMax: 10,
+    // Prefer compression (like MobaXterm/PuTTY): big output arrives much faster on thin links.
+    algorithms: { compress: ['zlib@openssh.com', 'zlib', 'none'] },
     hostVerifier: (key, verify) => { verifyHost(s.host, port, key, verify); },
   };
   if (pw) opts.password = pw;
@@ -252,6 +256,9 @@ ipcMain.handle('term:ssh', (_e, { sessionId, config, password, passphrase, cols,
       reject(err);
     };
     conn.on('keyboard-interactive', (_n, _i, _l, prompts, finish) => finish(prompts.map(() => pw)));
+    // ssh2 leaves Nagle's algorithm on, which holds each keystroke until the previous packet is
+    // acknowledged: on a high-latency link typing turns choppy. Interactive SSH clients turn it off.
+    conn.on('connect', () => { try { conn.setNoDelay(true); } catch {} });
     conn.on('ready', () => {
       conn.shell({ term: 'xterm-256color', cols: cols || 80, rows: rows || 24 }, (err, stream) => {
         if (err) return fail(err);
@@ -263,9 +270,10 @@ ipcMain.handle('term:ssh', (_e, { sessionId, config, password, passphrase, cols,
         stream.on('close', () => { try { conn.end(); } catch {} });
         settled = true;
         resolve({ id, title: s.name || `${s.username}@${s.host}` });
-        // Warm up the SFTP channel so the file browser opens instantly.
-        getSftp(id).catch(() => {});
-        setTimeout(() => startStats(id), 300);
+        // Warm up the SFTP channel so the file browser opens instantly, but let the shell's first
+        // screen arrive before it competes for a slow link. Opening the panel sooner starts it on demand.
+        setTimeout(() => { if (terms.get(id) === handle) getSftp(id).catch(() => {}); }, 2000);
+        setTimeout(() => startStats(id), 3000);
       });
     });
     conn.on('error', (err) => {
@@ -299,10 +307,14 @@ const STATS_CMD = [
   'cut -d" " -f1 /proc/uptime',
 ].join(' 2>/dev/null; echo @@; ') + ' 2>/dev/null';
 
+// Poll server stats one request at a time: the next poll is scheduled only after the previous one
+// answers, so on a slow link polls never pile up and crowd out typing or hit the server's MaxSessions.
+const STATS_EVERY = 10000;
 function startStats(id) {
   const h = terms.get(id);
   if (!h || h.kind !== 'ssh') return;
   const tick = async () => {
+    h.statsTimer = null;
     try {
       const parts = (await execOut(h.conn, STATS_CMD)).split('@@').map((x) => x.trim());
       if (!parts[0]) throw new Error('unsupported');
@@ -316,12 +328,11 @@ function startStats(id) {
         uptime: Number(parts[4]) || 0,
       });
     } catch {
-      clearInterval(h.statsTimer);
-      h.statsTimer = null;
+      return; // unsupported server or channel refused: stop polling
     }
+    if (terms.get(id) === h) h.statsTimer = setTimeout(tick, STATS_EVERY);
   };
   tick();
-  h.statsTimer = setInterval(tick, 5000);
 }
 
 // ---------- terminal I/O ----------
