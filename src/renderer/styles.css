@@ -181,6 +181,7 @@ textarea.input { height: auto; padding: 8px 10px; resize: vertical; }
 .input:focus { border-color: rgba(124,92,255,.6); box-shadow: var(--well), 0 0 0 3px rgba(124,92,255,.15); }
 select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238891a2' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
 select.input option { background: var(--surface-2); }
+.font-custom { margin-top: 8px; font-family: var(--font-mono); }
 .range-row { display: flex; align-items: center; gap: 10px; }
 .range-row input[type=range] { flex: 1; accent-color: var(--accent); }
 .range-row output { font: 12px var(--font-mono); color: var(--text-2); min-width: 26px; text-align: right; }

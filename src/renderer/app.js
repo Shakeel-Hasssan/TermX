@@ -216,11 +216,39 @@ const findDecorations = () => {
   return { matchBackground: mixHex(c, bg, 0.3), matchBorder: mixHex(c, bg, 0.6), matchOverviewRuler: c, activeMatchBackground: c, activeMatchBorder: '#ffffff', activeMatchColorOverviewRuler: c };
 };
 
+// ---------- fonts ----------
+// Fonts worth offering even when the system font list can't be read.
+const KNOWN_MONO = ['Cascadia Code', 'Cascadia Mono', 'JetBrains Mono', 'Fira Code', 'Fira Mono', 'Consolas', 'Source Code Pro',
+  'Hack', 'IBM Plex Mono', 'Roboto Mono', 'Ubuntu Mono', 'DejaVu Sans Mono', 'Liberation Mono', 'Noto Sans Mono', 'Inconsolata',
+  'Menlo', 'Monaco', 'SF Mono', 'Courier New', 'Lucida Console', 'Lucida Sans Typewriter', 'Victor Mono', 'Iosevka', 'Space Mono'];
+// A family is usable when it is installed and monospaced. Measured with a proportional fallback,
+// so a missing font falls back to serif and fails the equal-width test.
+let monoCtx = null;
+function isMonoFont(fam) {
+  monoCtx ||= document.createElement('canvas').getContext('2d');
+  monoCtx.font = `20px "${fam.replace(/"/g, '')}", serif`;
+  const a = monoCtx.measureText('iiiiiiiiii').width;
+  return a > 0 && Math.abs(a - monoCtx.measureText('MMMMMMMMMM').width) < 0.5 && Math.abs(a - monoCtx.measureText('..........').width) < 0.5;
+}
+let monoFonts = null;
+let monoFontsLoading = null;
+function loadMonoFonts() {
+  monoFontsLoading ||= (async () => {
+    const names = new Set(KNOWN_MONO);
+    try { for (const f of await window.queryLocalFonts()) names.add(f.family); } catch {}
+    monoFonts = [...names].filter((f) => !/dings|^marlett$|^symbol$|^mt extra$/i.test(f) && isMonoFont(f)).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    return monoFonts;
+  })();
+  return monoFontsLoading;
+}
+const firstFamily = (css) => (css || '').split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+const familyCss = (fam) => `'${fam.replace(/'/g, '')}', 'Cascadia Mono', Consolas, monospace`;
+
 function termOptions(tab) {
   return {
     theme: termTheme(tab),
     fontSize: settings.fontSize,
-    fontFamily: settings.fontFamily,
+    fontFamily: settings.fontFamily || DEFAULTS.fontFamily,
     lineHeight: settings.lineHeight,
     cursorStyle: settings.cursorStyle,
     cursorBlink: settings.cursorBlink,
@@ -2290,6 +2318,51 @@ function applySettings() {
   }
 }
 
+// Font family: a list of the installed monospace fonts, plus "Custom…" for a hand-written CSS font stack.
+function setupFontPicker(root) {
+  const pick = root.querySelector('[name=fontPick]');
+  const custom = root.querySelector('[name=fontFamily]');
+  const isDefault = !settings.fontFamily || settings.fontFamily === DEFAULTS.fontFamily;
+  const current = firstFamily(settings.fontFamily);
+  // A stack we wrote ourselves maps back to its font; anything else is a custom stack.
+  const picked = !isDefault && settings.fontFamily === familyCss(current) ? current : null;
+  const fill = (list) => {
+    const fams = picked && !list.includes(picked) ? [picked, ...list] : list;
+    pick.innerHTML = `<option value="">Default (${esc(firstFamily(DEFAULTS.fontFamily))})</option>`
+      + fams.map((f) => `<option value="${esc(f)}" style="font-family:'${esc(f)}'">${esc(f)}</option>`).join('')
+      + '<option value="__custom__">Custom…</option>';
+    pick.value = isDefault ? '' : picked ?? '__custom__';
+    custom.hidden = pick.value !== '__custom__';
+  };
+  fill(monoFonts || [picked || firstFamily(DEFAULTS.fontFamily)]);
+  if (!monoFonts) loadMonoFonts().then((list) => { if (pick.isConnected) fill(list); });
+  pick.onchange = () => {
+    const v = pick.value;
+    custom.hidden = v !== '__custom__';
+    if (v === '__custom__') { if (!custom.value.trim()) custom.value = settings.fontFamily || DEFAULTS.fontFamily; custom.focus(); custom.select(); return; }
+    settings.fontFamily = v ? familyCss(v) : DEFAULTS.fontFamily;
+    custom.value = settings.fontFamily;
+    saveSettings();
+    applySettings();
+  };
+  custom.onchange = () => {
+    let v = custom.value.trim().replace(/,\s*$/, '');
+    if (!v) {
+      // An empty custom font goes back to the default instead of leaving a blank box behind.
+      settings.fontFamily = DEFAULTS.fontFamily;
+      custom.value = settings.fontFamily;
+      pick.value = '';
+      custom.hidden = true;
+    } else {
+      // Without a generic family, a misspelt or missing font would fall back to a proportional font.
+      if (!/\bmonospace\s*$/i.test(v)) v += ', monospace';
+      settings.fontFamily = custom.value = v;
+    }
+    saveSettings();
+    applySettings();
+  };
+}
+
 function renderSettings() {
   const root = $('#settings');
   root.innerHTML = `
@@ -2301,7 +2374,9 @@ function renderSettings() {
     <div class="section-label">Text</div>
     <div class="field"><label>Font size</label><div class="range-row"><input type="range" min="9" max="28" name="fontSize" value="${settings.fontSize}"><output>${settings.fontSize}</output></div></div>
     <div class="field"><label>Line height</label><div class="range-row"><input type="range" min="1" max="1.6" step="0.05" name="lineHeight" value="${settings.lineHeight}"><output>${settings.lineHeight}</output></div></div>
-    <div class="field"><label>Font family</label><input class="input" name="fontFamily" value="${esc(settings.fontFamily)}" spellcheck="false"></div>
+    <div class="field"><label>Font family</label>
+      <select class="input" name="fontPick"></select>
+      <input class="input font-custom" name="fontFamily" value="${esc(settings.fontFamily)}" spellcheck="false" placeholder="e.g. 'Fira Code', monospace" hidden></div>
     <div class="field"><span class="field-label">Cursor</span><div class="seg" data-cursor>
       ${['bar', 'block', 'underline'].map((c) => `<button type="button" data-v="${c}" class="${settings.cursorStyle === c ? 'on' : ''}">${c[0].toUpperCase() + c.slice(1)}</button>`).join('')}</div></div>
     <div class="section-label">Highlight colors</div>
@@ -2335,7 +2410,7 @@ function renderSettings() {
     saveSettings();
     applySettings();
   }));
-  root.querySelector('[name=fontFamily]').onchange = (e) => { settings.fontFamily = e.target.value; saveSettings(); applySettings(); };
+  setupFontPicker(root);
   $$('input[type=checkbox]', root).forEach((c) => (c.onchange = () => {
     settings[c.name] = c.checked;
     saveSettings();
