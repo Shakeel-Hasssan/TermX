@@ -2653,7 +2653,7 @@ function openUpdate() {
     <div class="modal-head"><div><h3>TermX ${esc(u.latest)} is available</h3><div class="sub">You have ${esc(u.current)}.${auto && state.tabs.length ? ' Open terminals will close when TermX restarts.' : ''}</div></div></div>
     <div class="modal-body">
       <div class="bar hidden"><i style="width:0"></i></div>
-      <div class="status">${auto ? `Downloads ${esc(u.asset.name)} (${fmtBytes(u.asset.size)}), installs it and restarts TermX.` : u.kind === 'source' ? 'TermX is running from source. Pull the latest code to update.' : 'This release has no installer for your system yet.'}</div>
+      <div class="status">${auto ? `Downloads ${esc(u.asset.name)}${u.asset.size ? ` (${fmtBytes(u.asset.size)})` : ""}, installs it and restarts TermX.` : u.kind === 'source' ? 'TermX is running from source. Pull the latest code to update.' : 'This release has no installer for your system yet.'}</div>
     </div>
     <div class="modal-foot"><button class="btn left" data-page>Release page</button><button class="btn" data-x>Later</button>${auto ? '<button class="btn primary" data-go autofocus>Update now</button>' : ''}</div></div>`);
   const status = node.querySelector('.status');

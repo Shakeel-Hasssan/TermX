@@ -668,18 +668,48 @@ const ASSETS = {
 };
 let update = null; // latest check result, reused by update:install
 
+// GitHub's API allows only 60 anonymous requests an hour per IP address, which a shared office
+// network uses up quickly (it answers 403). The release page itself has no such limit: /releases/latest
+// redirects to the newest tag, and installers live at a fixed path under that tag.
+const RELEASE_PAGE = 'https://github.com/Shakeel-Hasssan/TermX/releases';
+// Where a URL redirects to, without following it. net.request goes through the system proxy like net.fetch,
+// but unlike net.fetch it reports the redirect target instead of failing on a manual redirect.
+function redirectTarget(url) {
+  return new Promise((resolve, reject) => {
+    const req = net.request({ url, method: 'HEAD', redirect: 'manual' });
+    req.setHeader('User-Agent', 'TermX');
+    const timer = setTimeout(() => { req.abort(); reject(new Error('GitHub took too long to answer')); }, 15000);
+    req.on('redirect', (_status, _method, target) => { clearTimeout(timer); req.abort(); resolve(target); });
+    req.on('response', (res) => { clearTimeout(timer); res.on('data', () => {}); resolve(''); });
+    req.on('error', (err) => { clearTimeout(timer); reject(err); });
+    req.end();
+  });
+}
+async function latestRelease() {
+  try {
+    const res = await net.fetch(RELEASES, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'TermX' } });
+    if (res.ok) {
+      const rel = await res.json();
+      return { tag: String(rel.tag_name || ''), page: rel.html_url, assets: (rel.assets || []).map((a) => ({ name: a.name, size: a.size, url: a.browser_download_url })) };
+    }
+  } catch {}
+  const page = await redirectTarget(`${RELEASE_PAGE}/latest`);
+  const tag = decodeURIComponent((page.match(/\/releases\/tag\/([^/?#]+)/) || [])[1] || '');
+  if (!tag) throw new Error('Could not reach GitHub to check for updates');
+  // Sizes aren't known this way; the download reads it from the response instead.
+  return { tag, page, assets: Object.values(ASSETS).map((name) => ({ name, size: 0, url: `${RELEASE_PAGE}/download/${tag}/${name}` })) };
+}
+
 ipcMain.handle('update:check', async () => {
-  const res = await net.fetch(RELEASES, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'TermX' } });
-  if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
-  const rel = await res.json();
+  const rel = await latestRelease();
   const kind = installKind();
-  const asset = (rel.assets || []).find((a) => a.name === ASSETS[kind]);
+  const asset = rel.assets.find((a) => a.name === ASSETS[kind]);
   update = {
     current: app.getVersion(),
-    latest: String(rel.tag_name || '').replace(/^v/, ''),
-    page: rel.html_url,
+    latest: rel.tag.replace(/^v/, ''),
+    page: rel.page,
     kind,
-    asset: asset ? { name: asset.name, size: asset.size, url: asset.browser_download_url } : null,
+    asset: asset || null,
   };
   update.available = newer(update.latest, update.current);
   return update;
@@ -690,7 +720,9 @@ async function download(asset) {
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, asset.name);
   const res = await net.fetch(asset.url, { headers: { 'User-Agent': 'TermX' } });
+  if (res.status === 404) throw new Error(`This release has no ${asset.name}`);
   if (!res.ok || !res.body) throw new Error(`Download failed (${res.status})`);
+  if (!asset.size) asset.size = Number(res.headers.get('content-length')) || 0;
   const out = fs.createWriteStream(file);
   let got = 0;
   let last = 0;
