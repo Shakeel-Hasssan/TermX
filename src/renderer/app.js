@@ -1625,10 +1625,26 @@ async function pickFolder(s) {
   if (r) await moveSessions([s.id], normFolder(r.folder));
 }
 
+async function renameSession(s) {
+  const r = await promptDialog({ title: 'Rename session', sub: sessionLabel(s), fields: [{ name: 'name', label: 'Session name', value: s.name }], ok: 'Rename' });
+  const name = r?.name.trim();
+  if (!name || name === s.name) return;
+  await api.sessions.save({ id: s.id, name });
+  // Open tabs that still carry the old name follow the rename; tabs renamed by hand keep their name.
+  for (const t of state.tabs) {
+    if (t.session?.id !== s.id) continue;
+    if (t.title === s.name) t.title = name;
+    t.session.name = name;
+  }
+  renderTabs();
+  await refreshSessions();
+}
+
 function sessionMenu(x, y, s) {
   showMenu(x, y, [
     { label: 'Connect', icon: 'play', action: () => openSsh(s) },
-    { label: 'Edit…', icon: 'edit', action: () => editSession(s) },
+    { label: 'Rename…', icon: 'edit', action: () => renameSession(s) },
+    { label: 'Edit…', icon: 'settings', action: () => editSession(s) },
     { label: 'Move to folder…', icon: 'folder', action: () => pickFolder(s) },
     { label: 'Duplicate', icon: 'copy', action: async () => { const { id, hasPassword, hasPassphrase, lastUsed, created, ...rest } = s; await api.sessions.save({ ...rest, name: s.name + ' (copy)' }); refreshSessions(); } },
     { label: 'Copy SSH command', icon: 'terminal', action: () => { api.clipboardWrite(`ssh ${s.port && Number(s.port) !== 22 ? `-p ${s.port} ` : ''}${s.username}@${s.host}`); toast('Copied'); } },
